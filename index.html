@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basic Sales Performance</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+  font-family:Segoe UI;
+  padding:15px;
+  background:#0f172a;
+  color:white;
+}
+
+.card{
+  background:rgba(255,255,255,0.05);
+  padding:18px;
+  border-radius:18px;
+  margin-bottom:18px;
+}
+
+input,button{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border-radius:12px;
+  border:none;
+}
+
+button{
+  background:#0b5ed7;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button.delete-btn{
+  background:#d9534f;
+  margin-top:5px;
+}
+
+details summary{
+  cursor:pointer;
+  font-weight:bold;
+  margin-bottom:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="card" id="loginCard">
+<h2>Basic Sales Performance</h2>
+<input type="email" id="userEmail" placeholder="Enter Email">
+<button onclick="login()">Login</button>
+</div>
+
+<div id="mainApp" style="display:none">
+
+<div class="card">
+<input type="date" id="date">
+<input type="number" id="sales" placeholder="Sales">
+<input type="number" id="expenses" placeholder="Expenses">
+<button onclick="addRecord()">Save Record</button>
+</div>
+
+<div class="card">
+<h3>Daily Profit Allocation</h3>
+
+<details open>
+<summary>View Daily Records</summary>
+<div id="dailyList"></div>
+</details>
+</div>
+
+<div class="card">
+<h3>Growth Chart</h3>
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+<script>
+
+let currentUserEmail=null;
+let records=[];
+let chart=null;
+
+/* LOGIN */
+function login(){
+let email=document.getElementById("userEmail").value.trim();
+if(!email) return alert("Enter email");
+
+currentUserEmail=email;
+
+document.getElementById("loginCard").style.display="none";
+document.getElementById("mainApp").style.display="block";
+
+records=JSON.parse(localStorage.getItem("basic_sales_"+currentUserEmail))||[];
+render();
+}
+
+/* SAVE RECORD */
+function addRecord(){
+let date=document.getElementById("date").value;
+let sales=Number(document.getElementById("sales").value);
+let expenses=Number(document.getElementById("expenses").value);
+
+if(!date) return alert("Enter date");
+
+let profit=sales-expenses;
+
+records.push({date,sales,expenses,profit});
+
+localStorage.setItem(
+"basic_sales_"+currentUserEmail,
+JSON.stringify(records)
+);
+
+document.getElementById("date").value="";
+document.getElementById("sales").value="";
+document.getElementById("expenses").value="";
+
+render();
+}
+
+/* DELETE RECORDS */
+function deleteRecord(index){
+if(!confirm("Delete record?")) return;
+
+records.splice(index,1);
+
+localStorage.setItem(
+"basic_sales_"+currentUserEmail,
+JSON.stringify(records)
+);
+
+render();
+}
+
+/* WHATSAPP SHARE */
+function shareWhatsApp(date,sales,profit){
+
+let msg=
+`Basic Sales Performance Report
+Date: ${date}
+Sales: ${sales}
+Profit: ${profit}
+
+Allocation:
+Owner 40% ${(profit*0.4).toFixed(2)}
+Capital 30% ${(profit*0.3).toFixed(2)}
+Savings 20% ${(profit*0.2).toFixed(2)}
+Emergency 10% ${(profit*0.1).toFixed(2)}
+`;
+
+window.open(
+"https://wa.me/?text="+encodeURIComponent(msg),
+"_blank"
+);
+}
+
+/* RENDER */
+function render(){
+
+let html="";
+let grouped={};
+
+records.forEach((r,i)=>{
+if(!grouped[r.date]){
+grouped[r.date]={sales:0,profit:0,indices:[]};
+}
+
+grouped[r.date].sales+=r.sales||0;
+grouped[r.date].profit+=r.profit||0;
+grouped[r.date].indices.push(i);
+});
+
+Object.keys(grouped).forEach(date=>{
+let totalSales=grouped[date].sales;
+let totalProfit=grouped[date].profit;
+let indices=grouped[date].indices;
+
+html+=`
+<div class="card">
+<b>${date}</b><br>
+
+Sales: ${totalSales}<br>
+Profit: ${totalProfit}<br><br>
+
+Owner 40% ${(totalProfit*0.4).toFixed(2)}<br>
+Capital 30% ${(totalProfit*0.3).toFixed(2)}<br>
+Savings 20% ${(totalProfit*0.2).toFixed(2)}<br>
+Emergency 10% ${(totalProfit*0.1).toFixed(2)}<br><br>
+
+<button onclick="shareWhatsApp('${date}',${totalSales},${totalProfit})">
+Share to WhatsApp
+</button>
+
+<button class="delete-btn" onclick="deleteDayRecords([${indices}])">
+Delete Day Records
+</button>
+
+</div>
+`;
+});
+
+document.getElementById("dailyList").innerHTML=html;
+
+/* Chart */
+let ctx=document.getElementById("chart").getContext("2d");
+
+if(chart) chart.destroy();
+
+chart=new Chart(ctx,{
+type:"line",
+data:{
+labels:records.map(r=>r.date),
+datasets:[{
+label:"Sales",
+data:records.map(r=>r.sales),
+borderColor:"#0b5ed7"
+}]
+}
+});
+}
+
+/* DELETE DAY RECORDS */
+function deleteDayRecords(indices){
+if(!confirm("Delete all records for this day?")) return;
+
+indices.sort((a,b)=>b-a);
+indices.forEach(i=>records.splice(i,1));
+
+localStorage.setItem(
+"basic_sales_"+currentUserEmail,
+JSON.stringify(records)
+);
+
+render();
+}
+
+</script>
+
+</body>
+</html>
