@@ -8,43 +8,43 @@
 
 <style>
 body{
-  font-family:Segoe UI;
-  padding:15px;
-  background:#0f172a;
-  color:white;
+font-family:Segoe UI;
+padding:15px;
+background:#0f172a;
+color:white;
 }
 
 .card{
-  background:rgba(255,255,255,0.05);
-  padding:18px;
-  border-radius:18px;
-  margin-bottom:18px;
+background:rgba(255,255,255,0.05);
+padding:18px;
+border-radius:18px;
+margin-bottom:18px;
 }
 
-input,button{
-  width:100%;
-  padding:14px;
-  margin-top:10px;
-  border-radius:12px;
-  border:none;
+input,button,select{
+width:100%;
+padding:14px;
+margin-top:10px;
+border-radius:12px;
+border:none;
 }
 
 button{
-  background:#0b5ed7;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
+background:#0b5ed7;
+color:white;
+font-weight:bold;
+cursor:pointer;
 }
 
 button.delete-btn{
-  background:#d9534f;
-  margin-top:5px;
+background:#d9534f;
+margin-top:5px;
 }
 
 details summary{
-  cursor:pointer;
-  font-weight:bold;
-  margin-bottom:10px;
+cursor:pointer;
+font-weight:bold;
+margin-bottom:10px;
 }
 </style>
 
@@ -61,9 +61,19 @@ details summary{
 <div id="mainApp" style="display:none">
 
 <div class="card">
+
+<select id="currency">
+<option value="KES">KES - Kenyan Shilling</option>
+<option value="$">USD - Dollar</option>
+<option value="€">EUR - Euro</option>
+<option value="£">GBP - Pound</option>
+<option value="₹">INR - Rupee</option>
+</select>
+
 <input type="date" id="date">
 <input type="number" id="sales" placeholder="Sales">
 <input type="number" id="expenses" placeholder="Expenses">
+
 <button onclick="addRecord()">Save Record</button>
 </div>
 
@@ -90,7 +100,9 @@ let records=[];
 let chart=null;
 
 /* LOGIN */
+
 function login(){
+
 let email=document.getElementById("userEmail").value.trim();
 if(!email) return alert("Enter email");
 
@@ -100,20 +112,31 @@ document.getElementById("loginCard").style.display="none";
 document.getElementById("mainApp").style.display="block";
 
 records=JSON.parse(localStorage.getItem("basic_sales_"+currentUserEmail))||[];
+
 render();
+
 }
 
 /* SAVE RECORD */
+
 function addRecord(){
+
 let date=document.getElementById("date").value;
 let sales=Number(document.getElementById("sales").value);
 let expenses=Number(document.getElementById("expenses").value);
+let currency=document.getElementById("currency").value;
 
 if(!date) return alert("Enter date");
 
 let profit=sales-expenses;
 
-records.push({date,sales,expenses,profit});
+records.push({
+date,
+sales,
+expenses,
+profit,
+currency
+});
 
 localStorage.setItem(
 "basic_sales_"+currentUserEmail,
@@ -125,10 +148,13 @@ document.getElementById("sales").value="";
 document.getElementById("expenses").value="";
 
 render();
+
 }
 
-/* DELETE RECORDS */
+/* DELETE RECORD */
+
 function deleteRecord(index){
+
 if(!confirm("Delete record?")) return;
 
 records.splice(index,1);
@@ -139,64 +165,75 @@ JSON.stringify(records)
 );
 
 render();
+
 }
 
 /* WHATSAPP SHARE */
-function shareWhatsApp(date,sales,profit){
+
+function shareWhatsApp(date,sales,profit,currency){
 
 let msg=
 `Basic Sales Performance Report
+
 Date: ${date}
-Sales: ${sales}
-Profit: ${profit}
+Sales: ${currency} ${sales}
+Profit: ${currency} ${profit}
 
 Allocation:
-Owner 40% ${(profit*0.4).toFixed(2)}
-Capital 30% ${(profit*0.3).toFixed(2)}
-Savings 20% ${(profit*0.2).toFixed(2)}
-Emergency 10% ${(profit*0.1).toFixed(2)}
+Owner 40% ${currency} ${(profit*0.4).toFixed(2)}
+Capital 30% ${currency} ${(profit*0.3).toFixed(2)}
+Savings 20% ${currency} ${(profit*0.2).toFixed(2)}
+Emergency 10% ${currency} ${(profit*0.1).toFixed(2)}
 `;
 
 window.open(
 "https://wa.me/?text="+encodeURIComponent(msg),
 "_blank"
 );
+
 }
 
 /* RENDER */
+
 function render(){
 
 let html="";
 let grouped={};
 
 records.forEach((r,i)=>{
+
 if(!grouped[r.date]){
-grouped[r.date]={sales:0,profit:0,indices:[]};
+grouped[r.date]={sales:0,profit:0,indices:[],currency:r.currency};
 }
 
 grouped[r.date].sales+=r.sales||0;
 grouped[r.date].profit+=r.profit||0;
 grouped[r.date].indices.push(i);
+
 });
 
 Object.keys(grouped).forEach(date=>{
+
 let totalSales=grouped[date].sales;
 let totalProfit=grouped[date].profit;
 let indices=grouped[date].indices;
+let currency=grouped[date].currency;
 
 html+=`
+
 <div class="card">
+
 <b>${date}</b><br>
 
-Sales: ${totalSales}<br>
-Profit: ${totalProfit}<br><br>
+Sales: ${currency} ${totalSales}<br>
+Profit: ${currency} ${totalProfit}<br><br>
 
-Owner 40% ${(totalProfit*0.4).toFixed(2)}<br>
-Capital 30% ${(totalProfit*0.3).toFixed(2)}<br>
-Savings 20% ${(totalProfit*0.2).toFixed(2)}<br>
-Emergency 10% ${(totalProfit*0.1).toFixed(2)}<br><br>
+Owner 40% ${currency} ${(totalProfit*0.4).toFixed(2)}<br>
+Capital 30% ${currency} ${(totalProfit*0.3).toFixed(2)}<br>
+Savings 20% ${currency} ${(totalProfit*0.2).toFixed(2)}<br>
+Emergency 10% ${currency} ${(totalProfit*0.1).toFixed(2)}<br><br>
 
-<button onclick="shareWhatsApp('${date}',${totalSales},${totalProfit})">
+<button onclick="shareWhatsApp('${date}',${totalSales},${totalProfit},'${currency}')">
 Share to WhatsApp
 </button>
 
@@ -205,12 +242,15 @@ Delete Day Records
 </button>
 
 </div>
+
 `;
+
 });
 
 document.getElementById("dailyList").innerHTML=html;
 
-/* Chart */
+/* CHART */
+
 let ctx=document.getElementById("chart").getContext("2d");
 
 if(chart) chart.destroy();
@@ -226,13 +266,17 @@ borderColor:"#0b5ed7"
 }]
 }
 });
+
 }
 
 /* DELETE DAY RECORDS */
+
 function deleteDayRecords(indices){
+
 if(!confirm("Delete all records for this day?")) return;
 
 indices.sort((a,b)=>b-a);
+
 indices.forEach(i=>records.splice(i,1));
 
 localStorage.setItem(
@@ -241,6 +285,7 @@ JSON.stringify(records)
 );
 
 render();
+
 }
 
 </script>
